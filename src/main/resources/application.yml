@@ -6,7 +6,53 @@ spring:
             - classpath:/yaml/application-secret.yml
     profiles:
         include: secret
+        active: local
+        group:
+          local: local, common
+          blue: blue, common
+          green: green, common
 
+---
+
+spring:
+    config:
+      activate:
+          on-profile: local
+
+server:
+    port: 8080
+    address: localhost
+
+serverName: local_server
+---
+spring:
+    config:
+        activate:
+            on-profile: blue
+
+server:
+    port: 8080
+    address: ${IP_ADDRESS}
+
+serverName: blue_server
+---
+
+spring:
+    config:
+        activate:
+            on-profile: green
+
+server:
+    port: 8081
+    address: ${IP_ADDRESS}
+
+serverName: green_server
+---
+
+spring:
+    config:
+        activate:
+            on-profile: common
     # mysql 데이터 베이스
     datasource:
         url: jdbc:mysql://localhost:3306/${DB_NAME}?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
@@ -21,3 +67,4 @@ spring:
             hibernate:
                 format_sql: true
                 dialect: org.hibernate.dialect.MySQL8Dialect
+
