@@ -58,7 +58,7 @@ jobs:
         #logout: # optional, default is true
            
     - name: Build Docker
-      run: docker build --platform linux/amd64 -t ${{ secrets.DOCKERHUB_USERNAME }}/study_server
+      run: docker build --platform linux/amd64 -t ${{ secrets.DOCKERHUB_USERNAME }}/study_server .
     - name: Push Docker
       run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/study_server:latest
         
