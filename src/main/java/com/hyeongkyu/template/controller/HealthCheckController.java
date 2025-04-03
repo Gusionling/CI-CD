@@ -32,6 +32,6 @@ public class HealthCheckController {
 
     @GetMapping("/address")
     public ResponseDto<?> getServerAddress(){
-        return ResponseDto.ok("서버 주소: "+address);
+        return ResponseDto.ok("서버 주소: " + address);
     }
 }
