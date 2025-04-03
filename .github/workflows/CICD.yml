@@ -12,6 +12,7 @@ on:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
+    
 
 jobs:
   build:
@@ -19,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-
+   
     steps:
     - uses: actions/checkout@v4
     - name: Set up JDK 17
@@ -33,8 +34,27 @@ jobs:
     - name: Setup Gradle
       uses: gradle/actions/setup-gradle@af1da67850ed9a4cedd57bfd976089dd991e2582 # v4.0.0
 
+    - name: Decode application-secret.yml
+      run: |
+        mkdir -p src/main/resources/yaml
+        echo ${{ secrets.APPLICATION_SECRET }} | base64 --decode > src/main/resources/yaml/application-secret.yml
+    - name: Setup MySQL
+      # You may pin to the exact commit or the version.
+      # uses: mirromutth/mysql-action@de1fba8b3f90ce8db80f663a7043be3cf3231248
+      uses: mirromutth/mysql-action@v1.1
+      with:
+        # The port of host
+        host port: 3306
+        # The port of container
+        container port: 3306
+        mysql root password: ${{ secrets.DB_PASSWORD }} 
+        # MYSQL_DATABASE - name for the default database that is created
+        mysql database: ${{ secrets.DB_NAME }}
+        # MYSQL_USER - create the specified user with superuser power for created database
+        mysql user: root 
+          
     - name: Build with Gradle Wrapper
-      run: ./gradlew build
+      run: ./gradlew build 
 
     - name: Docker Login
       # You may pin to the exact commit or the version.
@@ -53,9 +73,9 @@ jobs:
         #logout: # optional, default is true
            
     - name: Build Docker
-      run: docker build --platform linux/amd64 -t ${{ secrets.DOCKERHUB_USERNAME }}/live_server .
+      run: docker build --platform linux/amd64 -t ${{ secrets.DOCKERHUB_USERNAME }}/study_server .
     - name: Push Docker
-      run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/live_server:latest
+      run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/study_server:latest
         
 
     # NOTE: The Gradle Wrapper is the default and recommended way to run Gradle (https://docs.gradle.org/current/userguide/gradle_wrapper.html).
@@ -69,6 +89,75 @@ jobs:
     # - name: Build with Gradle 8.9
     #   run: gradle build
 
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set target IP
+        run: |
+          STATUS=$(curl -o /dev/null -w "%{http_code}" "http://${{ secrets.LIVE_SERVER_IP }}/api/v1/env")
+          echo $STATUS
+          if [ $STATUS = 200 ]; then
+            # JSON 응답에서 "data" 필드 값을 추출
+            CURRENT_UPSTREAM=$(curl -s "http://${{ secrets.LIVE_SERVER_IP }}/api/v1/env" | jq -r '.data')
+          else
+            CURRENT_UPSTREAM=green
+          fi
+          echo "Current upstream: $CURRENT_UPSTREAM"
+          echo CURRENT_UPSTREAM=$CURRENT_UPSTREAM >> $GITHUB_ENV
+          if [ $CURRENT_UPSTREAM = blue ]; then
+            echo "CURRENT_PORT=8080" >> $GITHUB_ENV
+            echo "STOPPED_PORT=8081" >> $GITHUB_ENV
+            echo "TARGET_UPSTREAM=green" >> $GITHUB_ENV
+          elif [ $CURRENT_UPSTREAM = green ]; then
+            echo "CURRENT_PORT=8081" >> $GITHUB_ENV
+            echo "STOPPED_PORT=8080" >> $GITHUB_ENV
+            echo "TARGET_UPSTREAM=blue" >> $GITHUB_ENV
+          else
+            echo "Current upstream is neither blue nor green: $CURRENT_UPSTREAM"
+            exit 1
+          fi
+      
+          
+      - name: Docker compose
+        uses: appleboy/ssh-action@master
+        with:
+          username: ubuntu
+          host: ${{ secrets.LIVE_SERVER_IP }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script_stop: true
+          script: |
+            sudo docker pull ${{ secrets.DOCKERHUB_USERNAME }}/study_server:latest
+            sudo docker-compose -f docker-compose-${{env.TARGET_UPSTREAM}}.yml up -d
+      
+      - name: Check deploy server URL
+        uses: jtalk/url-health-check-action@v3
+        with:
+          url: http://${{ secrets.LIVE_SERVER_IP }}:${{env.STOPPED_PORT}}/api/v1/env
+          max-attempts: 3
+          retry-delay: 10s
+
+      - name: Change nginx upstream
+        uses: appleboy/ssh-action@master
+        with:
+          username: ubuntu
+          host: ${{ secrets.LIVE_SERVER_IP }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script_stop: true
+          script: |
+            sudo docker exec -i nginxserver bash -c 'echo "set \$service_url ${{ env.TARGET_UPSTREAM }};" > /etc/nginx/conf.d/service-env.inc && nginx -s reload' 
+
+      - name: Stop current server
+        uses: appleboy/ssh-action@master
+        with:
+          username: ubuntu
+          host: ${{ secrets.LIVE_SERVER_IP }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script_stop: true
+          script: |
+            sudo docker stop ${{env.CURRENT_UPSTREAM}}
+            sudo docker rm ${{env.CURRENT_UPSTREAM}}
+  
   dependency-submission:
 
     runs-on: ubuntu-latest
