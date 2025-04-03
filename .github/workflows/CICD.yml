@@ -35,6 +35,7 @@ jobs:
 
     - name: Decode application-secret.yml
       run: |
+        mkdir -p src/main/resources/yaml
         echo ${{ secrets.APPLICATION_SECRET }} | base64 --decode > src/main/resources/yaml/application-secret.yml
     
     - name: Build with Gradle Wrapper
