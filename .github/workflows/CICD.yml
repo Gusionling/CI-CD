@@ -20,17 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-
-    services:
-      mysql:
-        image: mysql:8.0
-        env:
-          MYSQL_ROOT_PASSWORD: ${{ secrets.DB_PASSWORD }}
-          MYSQL_DATABASE: ${{ secrets.DB_NAME }}
-        ports:
-          - 3306:3306
-        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
-      
+   
     steps:
     - uses: actions/checkout@v4
     - name: Set up JDK 17
@@ -48,23 +38,23 @@ jobs:
       run: |
         mkdir -p src/main/resources/yaml
         echo ${{ secrets.APPLICATION_SECRET }} | base64 --decode > src/main/resources/yaml/application-secret.yml
-    
-    - name: Create test configuration
-      run: |
-        mkdir -p src/test/resources
-        cat > src/test/resources/application-test.yml << EOF
-        spring:
-          datasource:
-            url: jdbc:mysql://localhost:3306/${{ secrets.DB_NAME }}?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
-            username: root
-            password: ${{ secrets.DB_PASSWORD }}
-          jpa:
-            hibernate:
-              ddl-auto: create-drop
-        EOF
-    
+    - name: Setup MySQL
+      # You may pin to the exact commit or the version.
+      # uses: mirromutth/mysql-action@de1fba8b3f90ce8db80f663a7043be3cf3231248
+      uses: mirromutth/mysql-action@v1.1
+      with:
+        # The port of host
+        host port: 3306
+        # The port of container
+        container port: 3306
+        mysql root password: ${{ secrets.DB_PASSWORD }} 
+        # MYSQL_DATABASE - name for the default database that is created
+        mysql database: ${{ secrets.DB_NAME }}
+        # MYSQL_USER - create the specified user with superuser power for created database
+        mysql user: root 
+          
     - name: Build with Gradle Wrapper
-      run: ./gradlew build -Dspring.profiles.active=test
+      run: ./gradlew build 
 
     - name: Docker Login
       # You may pin to the exact commit or the version.
