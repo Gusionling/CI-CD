@@ -18,6 +18,11 @@ spring:
     config:
       activate:
           on-profile: local
+    datasource:
+        url: jdbc:mysql://localhost:3306/${DB_NAME}?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+        username: root
+        password: ${DB_PASSWORD}
+        driver-class-name: com.mysql.cj.jdbc.Driver
 
 server:
     port: 8080
@@ -29,7 +34,11 @@ spring:
     config:
         activate:
             on-profile: blue
-
+    datasource:
+        url: jdbc:mysql://${IP_ADDRESS}:3306/${DB_NAME}
+        username: root
+        password: ${DB_PASSWORD}
+        driver-class-name: com.mysql.cj.jdbc.Driver
 server:
     port: 8080
     address: ${IP_ADDRESS}
@@ -41,6 +50,11 @@ spring:
     config:
         activate:
             on-profile: green
+    datasource:
+        url: jdbc:mysql://${IP_ADDRESS}:3306/${DB_NAME}
+        username: root
+        password: ${DB_PASSWORD}
+        driver-class-name: com.mysql.cj.jdbc.Driver
 
 server:
     port: 8081
@@ -54,11 +68,7 @@ spring:
         activate:
             on-profile: common
     # mysql 데이터 베이스
-    datasource:
-        url: jdbc:mysql://host.docker.internal:3306/${DB_NAME}
-        username: root
-        password: ${DB_PASSWORD}
-        driver-class-name: com.mysql.cj.jdbc.Driver
+
     jpa:
         hibernate:
             ddl-auto: update
