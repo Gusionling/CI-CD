@@ -43,6 +43,8 @@ dependencies {
 	runtimeOnly 'com.mysql:mysql-connector-j'
 	runtimeOnly 'org.postgresql:postgresql'
 
+	testImplementation 'com.h2database:h2'
+
 	annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
 
 	annotationProcessor 'org.projectlombok:lombok'

@@ -1,0 +1,82 @@
+spring:
+  application:
+    name: template
+  config:
+    import:
+      - optional:classpath:/yaml/application-secret.yml
+  profiles:
+    include: secret
+    active: test
+    group:
+      local: local, common
+      blue: blue, common
+      green: green, common
+      test: test, common
+
+---
+spring:
+  config:
+    activate:
+      on-profile: local
+
+server:
+  port: 8080
+  address: localhost
+
+serverName: local_server
+---
+spring:
+  config:
+    activate:
+      on-profile: blue
+
+server:
+  port: 8080
+  address: ${IP_ADDRESS:localhost}
+
+serverName: blue_server
+---
+spring:
+  config:
+    activate:
+      on-profile: green
+
+server:
+  port: 8081
+  address: ${IP_ADDRESS:localhost}
+
+serverName: green_server
+---
+spring:
+  config:
+    activate:
+      on-profile: test
+
+server:
+  port: 8080
+  address: localhost
+
+serverName: test_server
+---
+spring:
+  config:
+    activate:
+      on-profile: common
+  # H2 인메모리 데이터베이스 (테스트용)
+  datasource:
+    url: jdbc:h2:mem:testdb;MODE=MySQL
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.H2Dialect
+    database-platform: org.hibernate.dialect.H2Dialect
+  h2:
+    console:
+      enabled: true
